@@ -1,0 +1,1 @@
+mgmt_uri = "http://guest:guest@localhost:15672"
