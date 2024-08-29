@@ -1,4 +1,7 @@
-defmodule Rabbit.Types.EctoUri do
+defmodule Rabbit.Types.EctoURI do
+  @moduledoc """
+  Custom type for URI.
+  """
   use Ecto.Type
 
   # ------------------------------------------------------------

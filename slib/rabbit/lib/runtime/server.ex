@@ -23,8 +23,10 @@ defmodule Rabbit.Runtime.Server do
         }
 
   # ------------------------------------------------------------------------
+  # GenServer
+  # ========================================================================
 
-  use GenServer
+  use GenServer, restart: :temporary
 
   # ------------------------------------------------------------------------
   # Client
@@ -33,6 +35,12 @@ defmodule Rabbit.Runtime.Server do
   @spec start_link(Config.t()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(%Config{} = config) do
     GenServer.start_link(__MODULE__, config, name: via_tuple(config.id))
+  end
+
+  # ------------------------------------------------------------------------
+
+  def update_config(server_id, %Config{} = config) do
+    GenServer.call(via_tuple(server_id), {:update_config, config})
   end
 
   # ------------------------------------------------------------------------
@@ -57,6 +65,12 @@ defmodule Rabbit.Runtime.Server do
   end
 
   # ------------------------------------------------------------------------
+
+  def stop(server_id, reason) do
+    GenServer.stop(via_tuple(server_id), reason)
+  end
+
+  # ------------------------------------------------------------------------
   # Callbacks
   # ========================================================================
 
@@ -70,7 +84,8 @@ defmodule Rabbit.Runtime.Server do
 
   @impl true
   def handle_call(:get_state, _from, state) do
-    {:reply, state, state}
+    new_state = refresh_server(state)
+    {:reply, new_state, new_state}
   end
 
   @impl true
@@ -90,6 +105,12 @@ defmodule Rabbit.Runtime.Server do
     {:reply, new_state, new_state}
   end
 
+  @impl true
+  def handle_call({:update_config, new_config}, _from, state) do
+    new_state = %{state | config: new_config}
+    {:reply, new_config, new_state}
+  end
+
   # ------------------------------------------------------------------------
 
   @impl true
@@ -99,6 +120,19 @@ defmodule Rabbit.Runtime.Server do
   end
 
   # ------------------------------------------------------------------------
+
+  @impl true
+  def terminate(reason, state) do
+    Logger.info(
+      "rabbit_server_#{state.config.id} is shutting down with reason: #{inspect(reason)}"
+    )
+
+    {:noreply, state}
+  end
+
+  # ------------------------------------------------------------------------
+  # Helpers
+  # ========================================================================
 
   defp via_tuple(id) do
     name = "rabbit_server_#{id}"
@@ -110,7 +144,14 @@ defmodule Rabbit.Runtime.Server do
   defp refresh_server(%Server{} = state) do
     with {:ok, queues} <- Manager.get_queues(state.config),
          {:ok, %{"status" => "ok"}} <- Manager.check_health(state.config) do
-      %{state | queues: queues, health: "ok", state: :ready}
+      formatter_queues =
+        queues
+        |> Enum.map(fn queue ->
+          Map.new(queue, fn {key, val} -> {String.to_atom(key), val} end)
+        end)
+        |> Enum.map(fn queue -> struct(Rabbit.Impl.Queue, queue) end)
+
+      %{state | queues: formatter_queues, health: "ok", state: :ready}
     else
       {:error, msg} ->
         Logger.error("Error: #{inspect(msg)}")

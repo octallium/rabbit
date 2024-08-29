@@ -28,6 +28,7 @@ defmodule Rabbit.MixProject do
       {:finch, "~> 0.18"},
       {:cloak_ecto, "~> 1.2.0"},
       {:amqp, "~> 3.3"},
+      {:telemetry, "~> 1.0"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]

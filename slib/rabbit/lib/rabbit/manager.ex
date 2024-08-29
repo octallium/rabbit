@@ -114,6 +114,6 @@ defmodule Rabbit.Impl.Manager do
   end
 
   defp handle_response({:error, reason}) do
-    {:error, "Request failed: #{reason}"}
+    {:error, "Request failed: #{inspect(reason)}"}
   end
 end

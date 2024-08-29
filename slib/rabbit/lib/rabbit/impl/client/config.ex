@@ -8,14 +8,14 @@ defmodule Rabbit.Impl.Client.Config do
   import Ecto.Changeset
 
   alias Rabbit.Impl.Client.Config
-  alias Rabbit.Types.EctoUri
+  alias Rabbit.Types.EctoURI
 
   # ------------------------------------------------------------
 
   schema "client_configs" do
     field(:name, :string)
     field(:env, :string)
-    field(:mgmt_uri, EctoUri)
+    field(:mgmt_uri, EctoURI)
     field(:mgmt_auth_hash, :binary)
 
     timestamps()
@@ -45,8 +45,13 @@ defmodule Rabbit.Impl.Client.Config do
   # ------------------------------------------------------------
 
   defp put_mgmt_auth_hash(%{valid?: true} = changeset) do
-    %URI{userinfo: userinfo} = get_change(changeset, :mgmt_uri)
-    add_hash(changeset, :mgmt_auth_hash, userinfo)
+    case get_change(changeset, :mgmt_uri) do
+      %URI{userinfo: userinfo} ->
+        add_hash(changeset, :mgmt_auth_hash, userinfo)
+
+      nil ->
+        changeset
+    end
   end
 
   defp add_hash(changeset, key, to_hash) do
@@ -57,10 +62,14 @@ defmodule Rabbit.Impl.Client.Config do
   end
 
   defp put_cleaned_mgmt_uri(changeset) do
-    mgmt_uri = get_change(changeset, :mgmt_uri, "")
+    case get_change(changeset, :mgmt_uri) do
+      nil ->
+        changeset
 
-    # Remove user credentials from URI
-    changeset
-    |> put_change(:mgmt_uri, %{mgmt_uri | userinfo: "", authority: "", path: ""})
+      %{} = mgmt_uri ->
+        # Remove user credentials from URI
+        changeset
+        |> put_change(:mgmt_uri, %{mgmt_uri | userinfo: "", authority: "", path: ""})
+    end
   end
 end

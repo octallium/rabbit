@@ -8,10 +8,11 @@ defmodule Rabbit.Runtime.Application do
   @impl true
   def start(_type, _args) do
     children = [
+      {Registry, keys: :unique, name: Rabbit.Registry},
       Rabbit.Vault,
       Rabbit.Repo,
       {Finch, name: Rabbit.Finch},
-      {Registry, keys: :unique, name: Rabbit.Registry}
+      {Rabbit.Runtime.Supervisor, name: Rabbit.MonitorSupervisor}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
